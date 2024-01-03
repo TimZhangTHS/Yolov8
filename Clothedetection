@@ -1,0 +1,50 @@
+from ultralytics import YOLO
+import cv2
+import cvzone
+import math
+import numpy as np
+
+cap = cv2.VideoCapture(0)
+cap.set(3,1280)
+cap.set(4,720)
+centerx, centery = 640, 360
+
+def find_angle_to_object(x1,y1,x2,y2):
+    # Replace this with your actual calculation based on object coordinates
+    # For example, you might calculate the angle based on the center of the object
+    # and the center of the frame.
+    frame_center = (640, 360)
+    object_center = ((x1 + x2) // 2), ((y1 + y2 )// 2)
+                     
+    
+    # Calculate the angle
+    angle = np.degrees(np.arctan2(object_center[1] - frame_center[1], 
+                                  object_center[0] - frame_center[0]))
+    
+    return angle
+model = YOLO("Clothe.pt")
+model.export(format='onnx')
+
+
+classNames = ['DarkClothe', 'LightClothe', 'LightClotheBasket', 'DarkClotheBasket']
+
+while True:
+    success, img = cap.read()
+    results = model(img, stream = True)
+    for r in results:
+        boxes = r.boxes
+        for box in boxes:
+            x1, y1, x2, y2 = box.xyxy[0]
+            x1, y1, x2, y2  = int(x1), int(y1), int(x2), int(y2)
+            print(x1, y1, x2, y2)
+            print(find_angle_to_object(x1,y1,x2,y2))
+            cv2.rectangle(img,(x1,y1),(x2,y2),(255,0,0),3)
+
+            conf = math.ceil((box.conf[0]*100))/100
+            
+            cls = int(box.cls[0])
+            
+            cvzone.putTextRect(img, f'{classNames[cls]} {conf}',(max(0,x1),max(35,y1)), scale = 1, thickness=2)#defult is 3 for both
+
+    cv2.imshow("Image", img)
+    cv2.waitKey(0)
